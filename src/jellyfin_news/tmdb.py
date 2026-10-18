@@ -16,6 +16,7 @@ from .config import Config
 log = logging.getLogger(__name__)
 API = "https://api.themoviedb.org/3"
 IMAGE_BASE = "https://image.tmdb.org/t/p"
+MAX_PAGES = 50  # TMDB serves 20 results per page; stops runaway pagination
 
 
 class TmdbClient:
@@ -115,7 +116,7 @@ class TmdbClient:
         while len(results) < limit:
             data = self.get(path, page=page, **params)
             results += data.get("results", [])
-            if page >= data.get("total_pages", 1) or page >= 5:
+            if page >= min(data.get("total_pages", 1), MAX_PAGES):
                 break
             page += 1
         return results[:limit]
