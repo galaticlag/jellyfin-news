@@ -47,10 +47,10 @@ def download_trailer(cfg: Config, video_id: str, dest: Path, timeout: int = 300)
     """Download a trailer to `dest` (an .mp4 path). Returns True if the file is available."""
     if dest.exists():
         return True
+    dest.parent.mkdir(parents=True, exist_ok=True)
     if not has_free_space(dest.parent, cfg.trailer_min_free_gb):
         log.warning("less than %d GiB free: skipping trailer download", cfg.trailer_min_free_gb)
         return False
-    dest.parent.mkdir(parents=True, exist_ok=True)
     try:
         subprocess.run(
             build_command(cfg, video_id, dest),

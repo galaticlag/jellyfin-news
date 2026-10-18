@@ -30,3 +30,9 @@ class TrailersTest(unittest.TestCase):
     def test_disk_guard(self):
         self.assertFalse(trailers.has_free_space(Path("/"), 10**9))
         self.assertTrue(trailers.has_free_space(Path("/"), 0))
+
+    def test_missing_parent_folder_is_created_before_the_disk_check(self):
+        dest = Path(tempfile.mkdtemp()) / "trailers" / "t.mp4"
+        cfg = Config(output_dir=dest.parent, yt_dlp_path="/nonexistent/yt-dlp", trailer_min_free_gb=0)
+        self.assertFalse(trailers.download_trailer(cfg, "abc", dest))  # soft failure, no exception
+        self.assertTrue(dest.parent.is_dir())

@@ -185,4 +185,5 @@ def _safe_write(
         return write_item(root, section, kind, details, cfg)
     except Exception as exc:  # noqa: BLE001 - one bad title must not abort the whole run
         log.warning("%s %s: %s", kind, details.get("id"), exc)
-        return None
+        # Keep the existing folder: a transient failure must never make cleanup delete a card.
+        return render.folder_name(details)

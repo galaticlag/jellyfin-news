@@ -112,3 +112,24 @@ class TrailerTest(unittest.TestCase):
         with self.mock.patch("jellyfin_news.sync.trailers.download_trailer") as dl:
             write_item(self.out, "movies", "movie", self._details(), Config(output_dir=self.out))
         dl.assert_not_called()
+
+
+class FailingWriteTest(unittest.TestCase):
+    def test_failed_write_does_not_delete_the_existing_card(self):
+        from unittest import mock
+
+        out = Path(tempfile.mkdtemp())
+        cfg = make_cfg(out, 0)
+        run_sync(FakeClient([1, 2]), cfg)
+        existing = out / "movies" / "Movie 2 (2026) [tmdbid-2]"
+        self.assertTrue(existing.exists())
+        real = __import__("jellyfin_news.sync", fromlist=["write_item"]).write_item
+
+        def flaky(root, section, kind, d, cfg):
+            if d["id"] == 2:
+                raise OSError("disk hiccup")
+            return real(root, section, kind, d, cfg)
+
+        with mock.patch("jellyfin_news.sync.write_item", flaky):
+            run_sync(FakeClient([1, 2]), cfg)
+        self.assertTrue(existing.exists())
