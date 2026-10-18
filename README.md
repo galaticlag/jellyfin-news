@@ -120,6 +120,9 @@ sudo systemctl daemon-reload
 sudo systemctl enable --now jellyfin-news.timer
 ```
 
+The timer uses `Persistent=true`: if the machine was off at the scheduled time (a server powered
+down at night, say), the run happens right after the next boot. Pick a time when the host is normally up.
+
 Adjust `User=` and the folder permissions so the service can write `output.dir` and Jellyfin can
 read it. Run once on demand with `sudo systemctl start jellyfin-news.service` and follow it with
 `journalctl -u jellyfin-news`. Each run also writes `<output.dir>/status.json` (time, result, per-library

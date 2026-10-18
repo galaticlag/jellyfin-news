@@ -4,6 +4,8 @@ Description=Run jellyfin-news daily
 [Timer]
 OnCalendar=*-*-* 05:30:00
 RandomizedDelaySec=5min
+# Catch up after boot if the machine was off at the scheduled time (e.g. a Raspberry Pi
+# that is powered down at night): choose a time when it is normally on.
 Persistent=true
 
 [Install]
