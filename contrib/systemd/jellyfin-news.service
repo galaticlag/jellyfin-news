@@ -1,0 +1,20 @@
+[Unit]
+Description=jellyfin-news: refresh the "What's new on streaming" libraries
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+# Create a dedicated user, or reuse the one that owns your Jellyfin media.
+User=jellyfin-news
+# Holds TMDB_READ_TOKEN=... (and optionally JELLYFIN_API_KEY=...). Keep it mode 640.
+EnvironmentFile=/etc/jellyfin-news/env
+ExecStart=/usr/local/bin/jellyfin-news --config /etc/jellyfin-news/config.toml
+TimeoutStartSec=15min
+Nice=10
+# Hardening: the job only needs the network and its output folder.
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+NoNewPrivileges=true
+ReadWritePaths=/var/lib/jellyfin-news

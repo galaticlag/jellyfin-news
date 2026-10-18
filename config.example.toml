@@ -1,0 +1,35 @@
+# jellyfin-news configuration. Copy to /etc/jellyfin-news/config.toml and adjust.
+# TMDB credentials are NOT stored here: export TMDB_READ_TOKEN (v4 token, preferred)
+# or TMDB_API_KEY (v3 key) in the environment instead.
+
+[locale]
+country  = "US"     # ISO 3166-1 alpha-2: where streaming availability is looked up (e.g. "FR", "DE", "GB")
+language = "en-US"  # language of titles, synopses and trailers (e.g. "fr-FR", "de-DE")
+
+[providers]
+# Streaming services to include, by name (as listed by TMDB for your country) or by TMDB id.
+# Leave empty to include every subscription service.
+names = ["Netflix", "Disney Plus", "Amazon Prime Video", "Apple TV Plus"]
+
+[window]
+recent_days   = 45  # "new on streaming": titles released in the last N days
+upcoming_days = 30  # "coming soon": movies releasing in the next N days
+
+[limits]
+movies   = 40
+series   = 40
+upcoming = 30
+
+[labels]            # tag added to every title; shown in Jellyfin's tag filter
+new      = "New"
+upcoming = "Coming soon"
+
+[output]
+dir = "/var/lib/jellyfin-news"  # Jellyfin must be able to read this folder
+# Safety net: if TMDB returns fewer titles than this, nothing is deleted and the run fails.
+min_items_before_cleanup = 5
+
+[jellyfin]
+# Optional. With a URL here and JELLYFIN_API_KEY in the environment, a library
+# rescan is triggered after each run. Otherwise Jellyfin's own scheduled scan applies.
+url = ""

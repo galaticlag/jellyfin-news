@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "jellyfin-news"
+dynamic = ["version"]
+description = "A 'What's new on streaming' library for Jellyfin: recent and upcoming releases with trailers, powered by TMDB."
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.11"
+dependencies = []
+keywords = ["jellyfin", "tmdb", "streaming", "trailers"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "License :: OSI Approved :: MIT License",
+  "Topic :: Multimedia :: Video",
+]
+
+[project.scripts]
+jellyfin-news = "jellyfin_news.cli:main"
+
+[project.optional-dependencies]
+dev = ["ruff"]
+
+[tool.setuptools.dynamic]
+version = { attr = "jellyfin_news.__version__" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
