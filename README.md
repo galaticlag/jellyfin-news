@@ -96,14 +96,14 @@ downloads:
 ```toml
 [trailers]
 download    = true
-max_height  = 480   # 480p H.264 is typically 3-10 MB per trailer
+max_height  = 480   # default quality: 240, 360, 480, 720 or 1080. 480p H.264 is ~5 MB per trailer
 min_free_gb = 10    # below this, downloads are skipped and the YouTube link is kept
 ```
 
 This needs [yt-dlp](https://github.com/yt-dlp/yt-dlp) on the host (and `ffmpeg`). Trailers are stored
 beside each card, named the way Jellyfin expects (`Movie-trailer.mp4`, or a `trailers/` folder for
-shows), and removed together with the card. A failed download simply keeps the YouTube link and is
-retried on the next run. Make sure your use complies with YouTube's terms of service.
+shows), and removed together with the card. When a trailer is unavailable, the next candidate listed by
+TMDB is tried automatically; if none works the card keeps the YouTube link and is retried after a week. Make sure your use complies with YouTube's terms of service.
 
 ## Add the libraries to Jellyfin
 

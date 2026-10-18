@@ -46,6 +46,15 @@ def _tmdb_token_from_env(env: dict[str, str]) -> str:
     raise ConfigError("no TMDB credentials: set TMDB_READ_TOKEN (v4) or TMDB_API_KEY (v3)")
 
 
+HEIGHTS = (240, 360, 480, 720, 1080)
+
+
+def _one_of(value: object, name: str, allowed: tuple[int, ...]) -> int:
+    if value not in allowed:
+        raise ConfigError(f"{name} must be one of {', '.join(map(str, allowed))}")
+    return int(value)  # type: ignore[arg-type]
+
+
 def _positive(value: object, name: str, minimum: int = 1) -> int:
     if not isinstance(value, int) or isinstance(value, bool) or value < minimum:
         raise ConfigError(f"{name} must be an integer >= {minimum}")
@@ -98,7 +107,7 @@ def load_config(path: Path, env: dict[str, str] | None = None) -> Config:
         label_upcoming=str(labels.get("upcoming", "Coming soon")),
         jellyfin_url=str(raw.get("jellyfin", {}).get("url", "")).rstrip("/"),
         download_trailers=bool(trailers.get("download", False)),
-        trailer_max_height=_positive(trailers.get("max_height", 480), "[trailers] max_height", 144),
+        trailer_max_height=_one_of(trailers.get("max_height", 480), "[trailers] max_height", HEIGHTS),
         trailer_min_free_gb=_positive(trailers.get("min_free_gb", 5), "[trailers] min_free_gb", 0),
         yt_dlp_path=str(trailers.get("yt_dlp", "yt-dlp")),
         yt_dlp_extra_args=tuple(str(a) for a in trailers.get("extra_args", ())),

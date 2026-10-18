@@ -35,19 +35,23 @@ def file_stem(details: dict[str, Any]) -> str:
     return safe_name(item_title(details)) + (f" ({year})" if year else "")
 
 
-def pick_trailer(details: dict[str, Any], language: str) -> str | None:
-    """YouTube id of the best trailer: official, in the user's language, newest."""
+def trailer_candidates(details: dict[str, Any], language: str, limit: int = 3) -> list[str]:
+    """YouTube ids ranked best first: trailers before teasers, user's language, official, newest."""
     lang = language.split("-")[0]
     videos = [
         v
         for v in (details.get("videos") or {}).get("results", [])
-        if v.get("site") == "YouTube" and v.get("type") in ("Trailer", "Teaser")
+        if v.get("site") == "YouTube" and v.get("type") in ("Trailer", "Teaser") and v.get("key")
     ]
-    if not videos:
-        return None
     videos.sort(key=lambda v: v.get("published_at") or "", reverse=True)
     videos.sort(key=lambda v: (v.get("type") != "Trailer", v.get("iso_639_1") != lang, not v.get("official")))
-    return videos[0]["key"]
+    return list(dict.fromkeys(v["key"] for v in videos))[:limit]
+
+
+def pick_trailer(details: dict[str, Any], language: str) -> str | None:
+    """The best trailer id, if any."""
+    candidates = trailer_candidates(details, language, 1)
+    return candidates[0] if candidates else None
 
 
 def stream_providers(details: dict[str, Any], country: str) -> list[str]:

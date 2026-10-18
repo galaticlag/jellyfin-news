@@ -133,3 +133,55 @@ class FailingWriteTest(unittest.TestCase):
         with mock.patch("jellyfin_news.sync.write_item", flaky):
             run_sync(FakeClient([1, 2]), cfg)
         self.assertTrue(existing.exists())
+
+
+class TrailerFallbackTest(unittest.TestCase):
+    def setUp(self):
+        self.out = Path(tempfile.mkdtemp())
+        self.cfg = Config(output_dir=self.out, download_trailers=True)
+        self.details = details(1)
+        dates = {"newest": "2026-03-01", "middle": "2026-02-01", "oldest": "2026-01-01"}
+        self.details["videos"] = {
+            "results": [
+                {
+                    "site": "YouTube",
+                    "type": "Trailer",
+                    "key": k,
+                    "iso_639_1": "en",
+                    "official": True,
+                    "published_at": d,
+                }
+                for k, d in dates.items()
+            ]
+        }
+
+    def _run(self, working):
+        from unittest import mock
+
+        from jellyfin_news.sync import write_item
+
+        calls = []
+
+        def fake(cfg, video_id, dest):
+            calls.append(video_id)
+            if video_id not in working:
+                return False
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            dest.write_bytes(b"x")
+            return True
+
+        with mock.patch("jellyfin_news.sync.trailers.download_trailer", fake):
+            name = write_item(self.out, "movies", "movie", self.details, self.cfg)
+        return self.out / "movies" / name, calls
+
+    def test_next_candidate_is_tried_when_the_first_is_unavailable(self):
+        folder, calls = self._run(working={"middle"})
+        self.assertEqual(calls, ["newest", "middle"])
+        self.assertIn("videoid=middle", next(folder.glob("*.nfo")).read_text())
+
+    def test_all_failing_keeps_link_and_skips_retries_for_a_week(self):
+        folder, calls = self._run(working=set())
+        self.assertEqual(len(calls), 3)
+        self.assertIn("videoid=newest", next(folder.glob("*.nfo")).read_text())
+        _, calls = self._run(working={"newest"})
+        self.assertEqual(calls, [], "must not retry before the retry delay")

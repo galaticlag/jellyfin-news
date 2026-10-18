@@ -10,6 +10,8 @@ All notable changes to this project are documented here. The format follows
 - Optional local trailer download (`[trailers]`, via yt-dlp) so trailers play on every Jellyfin client,
   with a free-disk-space guard and fallback to the YouTube link.
 - Cards are now written in parallel.
+- Automatic fallback to the next trailer when one is unavailable; titles with no working trailer are
+  retried after a week. The default quality is validated (`max_height`: 240, 360, 480, 720 or 1080).
 
 ## [0.1.0] - 2026-10-18
 

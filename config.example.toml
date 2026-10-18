@@ -38,9 +38,10 @@ url = ""
 # Download each trailer (480p H.264, a few MB) next to its card so that EVERY Jellyfin client can
 # play it: the film-reel button and the main Play button. Without it, only the web client can
 # open the YouTube link, and many TV/mobile apps cannot play it at all.
+# If a trailer is unavailable, the next candidate from TMDB is tried automatically.
 # Requires yt-dlp (https://github.com/yt-dlp/yt-dlp). Check YouTube's terms of service for your use.
 download     = false
-max_height   = 480
+max_height   = 480        # default quality: 240, 360, 480, 720 or 1080 (480p ~ 5 MB, 720p ~ 15 MB, 1080p ~ 35 MB)
 min_free_gb  = 5          # skip downloads (keep the YouTube link) when the disk has less free space
 yt_dlp       = "yt-dlp"
 extra_args   = []         # extra yt-dlp arguments, e.g. ["--js-runtimes", "node"]

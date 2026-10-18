@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import os
 import shutil
+import time
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
@@ -18,6 +19,9 @@ from .tmdb import TmdbClient, image_url
 
 log = logging.getLogger(__name__)
 MARKER = ".jellyfin-news"  # only folders carrying this file are ever deleted
+NO_TRAILER = ".no-trailer"  # all candidates failed: do not retry before RETRY_AFTER
+RETRY_AFTER = 7 * 86400
+TRAILER_ID = ".trailer-id"  # which YouTube id the local file came from
 SECTIONS = ("movies", "series", "upcoming")
 
 
@@ -63,9 +67,9 @@ def write_item(root: Path, section: str, kind: str, details: dict[str, Any], cfg
     folder.mkdir(parents=True, exist_ok=True)
     (folder / MARKER).touch()
 
-    trailer = render.pick_trailer(details, cfg.language)
     stem = render.file_stem(details)
-    local = _local_trailer(cfg, folder, kind, stem, trailer)
+    candidates = render.trailer_candidates(details, cfg.language)
+    local, trailer = _local_trailer(cfg, folder, kind, stem, candidates)
     label = cfg.label_upcoming if section == "upcoming" else cfg.label_new
     tags = render.stream_providers(details, cfg.country) + [label]
     nfo = render.build_nfo(kind, details, tags, trailer)
@@ -86,13 +90,39 @@ def write_item(root: Path, section: str, kind: str, details: dict[str, Any], cfg
     return folder.name
 
 
-def _local_trailer(cfg: Config, folder: Path, kind: str, stem: str, video_id: str | None) -> Path | None:
-    """Download the trailer next to the card (Jellyfin then plays it natively); None if unavailable."""
-    if not (cfg.download_trailers and video_id):
-        return None
+def _local_trailer(
+    cfg: Config, folder: Path, kind: str, stem: str, candidates: list[str]
+) -> tuple[Path | None, str | None]:
+    """Download the first available trailer next to the card (Jellyfin then plays it natively).
+
+    Returns (local file or None, YouTube id to reference). If every candidate fails, the best one
+    is still referenced as a YouTube link and the title is not retried for a week.
+    """
+    best = candidates[0] if candidates else None
+    if not (cfg.download_trailers and candidates):
+        return None, best
     # Jellyfin conventions: 'Movie-trailer.mp4' beside a movie, a 'trailers' folder for a show.
     dest = folder / f"{stem}-trailer.mp4" if kind == "movie" else folder / "trailers" / f"{stem}.mp4"
-    return dest if trailers.download_trailer(cfg, video_id, dest) else None
+    if dest.exists():
+        return dest, _existing_id(folder, best)
+    skip = folder / NO_TRAILER
+    if skip.exists() and time.time() - skip.stat().st_mtime < RETRY_AFTER:
+        return None, best
+    for video_id in candidates:
+        if trailers.download_trailer(cfg, video_id, dest):
+            (folder / TRAILER_ID).write_text(video_id, encoding="utf-8")
+            skip.unlink(missing_ok=True)
+            return dest, video_id
+        log.info("%s: trailer %s unavailable, trying the next one", stem, video_id)
+    skip.touch()
+    return None, best
+
+
+def _existing_id(folder: Path, default: str | None) -> str | None:
+    try:
+        return (folder / TRAILER_ID).read_text(encoding="utf-8").strip() or default
+    except OSError:
+        return default
 
 
 def cleanup(root: Path, section: str, keep: set[str]) -> int:
