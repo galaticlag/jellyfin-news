@@ -28,6 +28,11 @@ class Config:
     label_new: str = "New"
     label_upcoming: str = "Coming soon"
     jellyfin_url: str = ""
+    download_trailers: bool = False
+    trailer_max_height: int = 480
+    trailer_min_free_gb: int = 5
+    yt_dlp_path: str = "yt-dlp"
+    yt_dlp_extra_args: tuple[str, ...] = ()
     tmdb_token: str = field(default="", repr=False)
     jellyfin_api_key: str = field(default="", repr=False)
 
@@ -61,6 +66,7 @@ def load_config(path: Path, env: dict[str, str] | None = None) -> Config:
     limits = raw.get("limits", {})
     labels = raw.get("labels", {})
     output = raw.get("output", {})
+    trailers = raw.get("trailers", {})
     if not output.get("dir"):
         raise ConfigError("[output] dir is required")
 
@@ -91,6 +97,11 @@ def load_config(path: Path, env: dict[str, str] | None = None) -> Config:
         label_new=str(labels.get("new", "New")),
         label_upcoming=str(labels.get("upcoming", "Coming soon")),
         jellyfin_url=str(raw.get("jellyfin", {}).get("url", "")).rstrip("/"),
+        download_trailers=bool(trailers.get("download", False)),
+        trailer_max_height=_positive(trailers.get("max_height", 480), "[trailers] max_height", 144),
+        trailer_min_free_gb=_positive(trailers.get("min_free_gb", 5), "[trailers] min_free_gb", 0),
+        yt_dlp_path=str(trailers.get("yt_dlp", "yt-dlp")),
+        yt_dlp_extra_args=tuple(str(a) for a in trailers.get("extra_args", ())),
         tmdb_token=_tmdb_token_from_env(env),
         jellyfin_api_key=env.get("JELLYFIN_API_KEY", ""),
     )

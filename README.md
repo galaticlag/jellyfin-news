@@ -84,6 +84,27 @@ Try it without writing anything:
 jellyfin-news --config /etc/jellyfin-news/config.toml --dry-run
 ```
 
+## Playing the trailers
+
+Out of the box each card links to the trailer on YouTube. Only Jellyfin's **web** client can open
+that link, and only if the browser may load YouTube; most TV and mobile apps cannot play remote
+trailers at all.
+
+To make trailers play **everywhere** (film-reel button *and* the main Play button), enable local
+downloads:
+
+```toml
+[trailers]
+download    = true
+max_height  = 480   # 480p H.264 is typically 3-10 MB per trailer
+min_free_gb = 10    # below this, downloads are skipped and the YouTube link is kept
+```
+
+This needs [yt-dlp](https://github.com/yt-dlp/yt-dlp) on the host (and `ffmpeg`). Trailers are stored
+beside each card, named the way Jellyfin expects (`Movie-trailer.mp4`, or a `trailers/` folder for
+shows), and removed together with the card. A failed download simply keeps the YouTube link and is
+retried on the next run. Make sure your use complies with YouTube's terms of service.
+
 ## Add the libraries to Jellyfin
 
 In *Dashboard → Libraries → Add Media Library*, create three libraries pointing at the sub-folders of

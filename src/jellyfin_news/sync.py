@@ -12,7 +12,7 @@ from datetime import date, timedelta
 from pathlib import Path
 from typing import Any
 
-from . import render
+from . import render, trailers
 from .config import Config
 from .tmdb import TmdbClient, image_url
 
@@ -64,11 +64,12 @@ def write_item(root: Path, section: str, kind: str, details: dict[str, Any], cfg
     (folder / MARKER).touch()
 
     trailer = render.pick_trailer(details, cfg.language)
+    stem = render.file_stem(details)
+    local = _local_trailer(cfg, folder, kind, stem, trailer)
     label = cfg.label_upcoming if section == "upcoming" else cfg.label_new
     tags = render.stream_providers(details, cfg.country) + [label]
     nfo = render.build_nfo(kind, details, tags, trailer)
-    strm = render.strm_target(details, kind, trailer)
-    stem = render.file_stem(details)
+    strm = f"{local}\n" if local else render.strm_target(details, kind, trailer)
     if kind == "movie":
         write_if_changed(folder / f"{stem}.nfo", nfo)
         write_if_changed(folder / f"{stem}.strm", strm)
@@ -83,6 +84,15 @@ def write_item(root: Path, section: str, kind: str, details: dict[str, Any], cfg
     if details.get("backdrop_path"):
         _download(image_url(details["backdrop_path"], "w1280"), folder / "fanart.jpg")
     return folder.name
+
+
+def _local_trailer(cfg: Config, folder: Path, kind: str, stem: str, video_id: str | None) -> Path | None:
+    """Download the trailer next to the card (Jellyfin then plays it natively); None if unavailable."""
+    if not (cfg.download_trailers and video_id):
+        return None
+    # Jellyfin conventions: 'Movie-trailer.mp4' beside a movie, a 'trailers' folder for a show.
+    dest = folder / f"{stem}-trailer.mp4" if kind == "movie" else folder / "trailers" / f"{stem}.mp4"
+    return dest if trailers.download_trailer(cfg, video_id, dest) else None
 
 
 def cleanup(root: Path, section: str, keep: set[str]) -> int:
@@ -144,7 +154,9 @@ def run_sync(client: TmdbClient, cfg: Config, dry_run: bool = False, workers: in
             continue
         with ThreadPoolExecutor(max_workers=workers) as pool:
             fetched = list(pool.map(lambda c, k=kind: _safe_details(client, k, c["id"]), candidates))
-        keep = {name for d in fetched if d and (name := write_item(root, section, kind, d, cfg))}
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            written = pool.map(lambda d, s=section, k=kind: _safe_write(root, s, k, d, cfg), fetched)
+            keep = {name for name in written if name}
         if len(keep) < cfg.min_items_before_cleanup:
             # Likely an upstream problem: keep the previous content instead of wiping it.
             raise SyncError(
@@ -161,4 +173,16 @@ def _safe_details(client: TmdbClient, kind: str, tmdb_id: int) -> dict[str, Any]
         return client.details(kind, tmdb_id)
     except Exception as exc:  # noqa: BLE001 - one bad title must not abort the whole run
         log.warning("%s %s: %s", kind, tmdb_id, exc)
+        return None
+
+
+def _safe_write(
+    root: Path, section: str, kind: str, details: dict[str, Any] | None, cfg: Config
+) -> str | None:
+    if not details:
+        return None
+    try:
+        return write_item(root, section, kind, details, cfg)
+    except Exception as exc:  # noqa: BLE001 - one bad title must not abort the whole run
+        log.warning("%s %s: %s", kind, details.get("id"), exc)
         return None

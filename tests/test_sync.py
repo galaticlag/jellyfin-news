@@ -65,3 +65,50 @@ class SyncTest(unittest.TestCase):
 
     def test_cleanup_on_missing_section(self):
         self.assertEqual(cleanup(self.out, "movies", set()), 0)
+
+
+class TrailerTest(unittest.TestCase):
+    def setUp(self):
+        from unittest import mock
+
+        self.out = Path(tempfile.mkdtemp())
+        self.mock = mock
+
+    def _details(self):
+        d = details(1)
+        d["videos"] = {"results": [{"site": "YouTube", "type": "Trailer", "key": "abc", "iso_639_1": "en"}]}
+        return d
+
+    def test_local_trailer_becomes_the_strm_target(self):
+        cfg = Config(output_dir=self.out, download_trailers=True)
+
+        def fake_download(cfg, video_id, dest):
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            dest.write_bytes(b"x")
+            return True
+
+        with self.mock.patch("jellyfin_news.sync.trailers.download_trailer", fake_download):
+            from jellyfin_news.sync import write_item
+
+            name = write_item(self.out, "movies", "movie", self._details(), cfg)
+        folder = self.out / "movies" / name
+        self.assertTrue((folder / "Movie 1 (2026)-trailer.mp4").exists())
+        self.assertEqual(
+            (folder / "Movie 1 (2026).strm").read_text().strip(), str(folder / "Movie 1 (2026)-trailer.mp4")
+        )
+
+    def test_failed_download_falls_back_to_youtube_link(self):
+        cfg = Config(output_dir=self.out, download_trailers=True)
+        with self.mock.patch("jellyfin_news.sync.trailers.download_trailer", lambda *a: False):
+            from jellyfin_news.sync import write_item
+
+            name = write_item(self.out, "movies", "movie", self._details(), cfg)
+        strm = (self.out / "movies" / name / "Movie 1 (2026).strm").read_text()
+        self.assertEqual(strm.strip(), "https://www.youtube.com/watch?v=abc")
+
+    def test_disabled_by_default(self):
+        from jellyfin_news.sync import write_item
+
+        with self.mock.patch("jellyfin_news.sync.trailers.download_trailer") as dl:
+            write_item(self.out, "movies", "movie", self._details(), Config(output_dir=self.out))
+        dl.assert_not_called()

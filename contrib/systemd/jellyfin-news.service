@@ -10,7 +10,8 @@ User=jellyfin-news
 # Holds TMDB_READ_TOKEN=... (and optionally JELLYFIN_API_KEY=...). Keep it mode 640.
 EnvironmentFile=/etc/jellyfin-news/env
 ExecStart=/usr/local/bin/jellyfin-news --config /etc/jellyfin-news/config.toml
-TimeoutStartSec=15min
+# The first run (initial trailer downloads) can take a while on a small machine.
+TimeoutStartSec=2h
 Nice=10
 # Hardening: the job only needs the network and its output folder.
 ProtectSystem=strict

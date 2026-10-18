@@ -33,3 +33,14 @@ min_items_before_cleanup = 5
 # Optional. With a URL here and JELLYFIN_API_KEY in the environment, a library
 # rescan is triggered after each run. Otherwise Jellyfin's own scheduled scan applies.
 url = ""
+
+[trailers]
+# Download each trailer (480p H.264, a few MB) next to its card so that EVERY Jellyfin client can
+# play it: the film-reel button and the main Play button. Without it, only the web client can
+# open the YouTube link, and many TV/mobile apps cannot play it at all.
+# Requires yt-dlp (https://github.com/yt-dlp/yt-dlp). Check YouTube's terms of service for your use.
+download     = false
+max_height   = 480
+min_free_gb  = 5          # skip downloads (keep the YouTube link) when the disk has less free space
+yt_dlp       = "yt-dlp"
+extra_args   = []         # extra yt-dlp arguments, e.g. ["--js-runtimes", "node"]
